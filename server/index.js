@@ -12,15 +12,18 @@ const routeConfig = require('./config/route.config');
 
 //microservice routes 
 const Auth = require('./api/Auth');
+const Docs = require("./api/files/index");
 
 const Finlo = express();
 
 // Authentication configuration
-Finlo.use(session({
+Finlo.use(
+  session({
     resave: false,
     saveUninitialized: true,
-    secret: 'finlo_taX_app' 
-  }));
+    secret: "finlo_taX_app",
+  })
+);
 
 // application middlewares
 Finlo.use(express.json());
@@ -35,7 +38,8 @@ googleAuthConfig(passport);
 routeConfig(passport);
 
 //Application routes
-Finlo.use('/auth', Auth);
+Finlo.use("/auth", Auth);
+Finlo.use("/file", Docs);
 
 Finlo.get('/', (req, res) => res.json("Welcome to Finlo"))
 
