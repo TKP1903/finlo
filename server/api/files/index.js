@@ -14,20 +14,21 @@ const upload = multer({ storage });
 
 /*
 Route     /
-Des       Uploads given image to S3 bucket, and saves file link to mongodb
+Des       
 Params    none
 Access    Public
 Method    POST  
 */
-Router.post("/uploadfile/:_id", upload.single("file"), async (req, res) => {
+Router.post("/uploadfile/:_id/:folderName", upload.single("file"), async (req, res) => {
   try {
     const file = req.file;
     const user_id = req.params._id;
+    const folderName = req.params.folderName;
 
     // s3 bucket options
     const bucketOptions = {
       Bucket: "finlo",
-      Key: file.originalname,
+      Key: `${folderName}/${file.originalname}`,
       Body: file.buffer,
       ContentType: file.mimetype,
       //   ACL: "public-read", // Access Control List
@@ -44,7 +45,7 @@ Router.post("/uploadfile/:_id", upload.single("file"), async (req, res) => {
     // );
     const id = 0;
     const q =
-      "INSERT INTO customer_documents (`customer_documents_id`, `customer_id`, `document_name`, `document_link`, `document_type`, `document_Size`) VALUES (?)";
+      "INSERT INTO customer_documents (`customer_documents_id`, `customer_id`, `document_name`, `document_link`, `document_type`, `document_Size`, `folder_name`) VALUES (?)";
     const values = [
       id,
       user_id,
@@ -52,6 +53,7 @@ Router.post("/uploadfile/:_id", upload.single("file"), async (req, res) => {
       uploadImage.Location,
       file.mimetype,
       file.size,
+      folderName
     ];
     db.query(q, [values], (err, data) => {
       if (err) return res.status(500).json(err.message);
@@ -68,15 +70,78 @@ Router.post("/uploadfile/:_id", upload.single("file"), async (req, res) => {
 
 /*
 Route     /
+Des       
+Params    none
+Access    Public
+Method    POST  
+*/
+Router.post(
+  "/uploadfolder/:_id/:folderName",
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const user_id = req.params._id;
+      const folderName = req.params.folderName;
+      console.log(req.params);
+      // s3 bucket options
+      const bucketOptions = {
+        Bucket: "finlo",
+        Key: `${folderName}/`,
+        Body: `${folderName}`,
+        // ContentType: file.mimetype,
+        //   ACL: "public-read", // Access Control List
+      };
+      const uploadImage = await s3Upload(bucketOptions);
+      const values = [0, folderName];
+      const q =
+        "INSERT INTO user_folders (`user_id`, `folder_name`) VALUES (?)";
+      db.query(q, [values], (err, data) => {
+        if (err) return res.status(500).json(err.message);
+        return res
+          .status(200)
+          .json({ message: "File uploaded successfully", data });
+      });
+      // return res.status(200).json({ uploadImage });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/*
+Route     /
+Des       
+Params    none
+Access    Public
+Method    POST  
+*/
+Router.get(
+  "/get-user-folders/:_id",
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const q = "SELECT * FROM user_folders Where user_id = 0";
+      db.query(q, (err, data) => {
+        if (err) return res.status(500).json(err.message);
+        // else console.log(data);
+        return res.status(200).json({ data });
+      });
+    } catch (error) {}
+  }
+);
+/*
+Route     /
 Des       Uploads given image to S3 bucket, and saves file link to mongodb
 Params    none
 Access    Public
 Method    POST  
 */
-Router.get("/get-user-docs/:_id", upload.single("file"), async (req, res) => {
+Router.get("/get-user-docs/:_id/:folderName", upload.single("file"), async (req, res) => {
   try {
-    const q = "SELECT * FROM customer_documents Where customer_id = 0";
-    db.query(q, (err, data) => {
+    const folder_name = req.params.folderName
+    console.log(folder_name);
+    const q = `SELECT * FROM customer_documents Where folder_name = (?)`;
+    db.query(q, [folder_name],(err, data) => {
       if (err) return res.status(00500).json(err.message);
       // else console.log(data);
       return res.status(200).json({ data });
